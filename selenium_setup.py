@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Railway-compatible Selenium Chrome setup with configurable headless mode
-Replaces webdriver-manager for production deployment
+FIXED: Added critical flags for Railway environment
 """
 import os
 import logging
@@ -35,11 +35,28 @@ def get_chrome_driver(headless=True):
         chrome_options.add_argument("--start-maximized")
         logger.info("Running in headed mode")
     
-    # Essential arguments for Railway/containerized environments
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
+    # CRITICAL: Essential arguments for Railway/containerized environments
+    chrome_options.add_argument('--no-sandbox')  # CRITICAL for Docker
+    chrome_options.add_argument('--disable-dev-shm-usage')  # CRITICAL for limited /dev/shm
     chrome_options.add_argument('--disable-software-rasterizer')
     chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--disable-setuid-sandbox')  # Additional sandbox bypass
+    
+    # Additional stability flags for Railway
+    chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+    chrome_options.add_argument('--single-process')  # Run in single process mode
+    chrome_options.add_argument('--disable-background-networking')
+    chrome_options.add_argument('--disable-background-timer-throttling')
+    chrome_options.add_argument('--disable-breakpad')
+    chrome_options.add_argument('--disable-client-side-phishing-detection')
+    chrome_options.add_argument('--disable-component-extensions-with-background-pages')
+    chrome_options.add_argument('--disable-default-apps')
+    chrome_options.add_argument('--disable-ipc-flooding-protection')
+    chrome_options.add_argument('--disable-renderer-backgrounding')
+    chrome_options.add_argument('--metrics-recording-only')
+    chrome_options.add_argument('--mute-audio')
+    chrome_options.add_argument('--no-first-run')
+    chrome_options.add_argument('--no-zygote')  # CRITICAL for single process
     
     # Performance optimizations
     chrome_options.add_argument('--disable-logging')
@@ -72,13 +89,17 @@ def get_chrome_driver(headless=True):
     try:
         # Try with explicit path first
         if os.path.exists(chromedriver_path):
-            service = Service(executable_path=chromedriver_path)
+            service = Service(
+                executable_path=chromedriver_path,
+                log_path='/tmp/chromedriver.log'  # Verbose logging for debugging
+            )
             driver = webdriver.Chrome(service=service, options=chrome_options)
             logger.info(f"Chrome driver initialized with path: {chromedriver_path}")
         else:
             # Fallback: let selenium find it
             logger.info("ChromeDriver not found at expected path, using auto-detection")
-            driver = webdriver.Chrome(options=chrome_options)
+            service = Service(log_path='/tmp/chromedriver.log')
+            driver = webdriver.Chrome(service=service, options=chrome_options)
             logger.info("Chrome driver initialized with auto-detection")
         
         # Set page load timeout
@@ -89,16 +110,13 @@ def get_chrome_driver(headless=True):
         
     except Exception as e:
         logger.error(f"Failed to initialize Chrome driver: {e}")
-        # One more fallback attempt without service
+        # Log chromedriver verbose output if available
         try:
-            logger.info("Attempting fallback initialization...")
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(120)
-            logger.info("✓ Chrome WebDriver initialized via fallback")
-            return driver
-        except Exception as e2:
-            logger.error(f"Fallback also failed: {e2}")
-            raise
+            with open('/tmp/chromedriver.log', 'r') as f:
+                logger.error(f"ChromeDriver log:\n{f.read()}")
+        except:
+            pass
+        raise
 
 
 def get_driver_from_env():
