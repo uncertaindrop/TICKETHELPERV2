@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application logs
+logs/
+*.log
+
+# Screenshots
+screenshots/*.png
+!screenshots/.gitkeep
+
+# Uploads
+uploads/*.pdf
+!uploads/.gitkeep
+
+# Cookies (contains auth tokens)
+pmm_cookies.json
+*.json.bak
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Selenium drivers (managed by Docker)
+chromedriver*
+selenium-server-*
+geckodriver*

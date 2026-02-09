@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Selenium - don't include local downloads
+chromedriver*
+selenium-server-*
+geckodriver*
+
+# Logs (will be generated fresh)
+*.log
+logs/*.log
+
+# Local env files
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+README.md
+
+# Test files
+tests/
+test_*.py
+
+# Archive folder (old versions)
+arch/
+
+# Local screenshots and uploads (will be generated)
+screenshots/*.png
+uploads/*.pdf
+
+# Cookies (will be generated)
+pmm_cookies.json

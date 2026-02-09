@@ -1,0 +1,381 @@
+ffetc<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TICKET HELPER</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .row > div {
+            flex: 1;
+            min-width: 180px;
+        }
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid #ccd2e0;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        input[type="file"] {
+            font-size: 13px;
+        }
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            border-bottom: 1px solid #e1e5f0;
+            padding: 6px 4px;
+            vertical-align: top;
+            text-align: left;
+        }
+        th {
+            background: #eef1f9;
+            font-weight: 600;
+        }
+        .status-cell {
+            text-align: center;
+            font-size: 18px;
+        }
+        .status-pending {
+            color: #9ca3af;
+        }
+        .status-ok {
+            color: #16a34a;
+        }
+        .status-fail {
+            color: #dc2626;
+        }
+        .ticket-type-select, .store-select {
+            width: 100%;
+        }
+        .small-text {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: #e0e7ff;
+            color: #3730a3;
+            font-size: 11px;
+        }
+        #log {
+            font-size: 12px;
+            max-height: 120px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            background: #0f172a;
+            color: #e5e7eb;
+            padding: 8px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ticket Helper</h1>
+
+    <div class="card">
+        <div class="row">
+            <div>
+                <label for="crm_username">CRM Username</label>
+                <input type="text" id="crm_username" placeholder="pmm username" value="a.starovoytov">
+            </div>
+            <div>
+                <label for="crm_password">CRM Password</label>
+                <input type="password" id="crm_password" placeholder="pmm password" value="irep4321!@">
+            </div>
+            <div>
+                <label>&nbsp;</label>
+                <span class="small-text">
+                    Uses single login for all tickets. CAPTCHA &amp; OTP are solved manually in Chrome.
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <label for="pdf_files">Invoice PDFs</label>
+        <input type="file" id="pdf_files" accept="application/pdf" multiple>
+        <div class="small-text" style="margin-top:4px;">
+            Greek + English filenames supported (UTF-8). After upload, PDFs are parsed and shown below.
+        </div>
+    </div>
+
+    <div class="card" id="pdf_container" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div><strong>PDFs &amp; Parsed Data</strong></div>
+            <div class="small-text">
+                Ticket types are per row. CRM login is global.
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>PDF</th>
+                        <th>Preview (parsed)</th>
+                        <th>Ticket Type</th>
+                        <th>Store</th>
+                        <th class="status-cell">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf_rows">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <button id="btn_create" disabled>CREATE TICKETS</button>
+        <span class="small-text" id="create_hint">
+            Upload at least one PDF first.
+        </span>
+    </div>
+
+    <div class="card">
+        <strong>Backend log</strong>
+        <div id="log"></div>
+    </div>
+
+<script>
+    const pdfInput = document.getElementById('pdf_files');
+    const pdfContainer = document.getElementById('pdf_container');
+    const pdfRows = document.getElementById('pdf_rows');
+    const btnCreate = document.getElementById('btn_create');
+    const logEl = document.getElementById('log');
+    const createHint = document.getElementById('create_hint');
+
+    // will be filled by /parse_pdfs
+    let parsedFiles = [];  // [{id, filename, fields:{...}}]
+
+    function appendLog(line) {
+        const now = new Date().toLocaleTimeString();
+        logEl.textContent += `[${now}] ${line}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function ticketTypeOptionsHtml() {
+        const options = [
+            "PROMO",
+            "QUICK REPAIR PRINTER",
+            "QUICK REPAIR LAPTOP",
+            "QUICK REPAIR TABLET",
+            "QUICK REPAIR APPLIANCE",
+            "QUICK REPAIR PHONE"
+        ];
+        return options.map(o => `<option value="${o}">${o}</option>`).join("");
+    }
+
+    function storeOptionsHtml() {
+        const stores = [
+            "CY iRepair Public / Mall of Cyprus",
+            "CY iRepair Public / Larnaka",
+            "CY iRepair Public / MyMall Limassol",
+            "CY iRepair Public / Nicosia Mall",
+            "CY iRepair Public / Pafos",
+            "CY iRepair Public / Paralimni"
+        ];
+        return stores.map(s => `<option value="${s}">${s}</option>`).join("");
+    }
+
+    function buildRows() {
+        pdfRows.innerHTML = "";
+        parsedFiles.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.dataset.fileId = f.id;
+
+            const fields = f.fields || {};
+            const safe = (v) => v ? String(v) : ".";
+
+            const previewHtml = `
+                <div><span class="badge">Invoice</span> ${safe(fields.invoice)}</div>
+                <div>${safe(fields.name)} ${safe(fields.surname)}</div>
+                <div>Phone: ${safe(fields.phone)}</div>
+                <div>CST code: ${safe(fields.cstcode)}</div>
+                <div>Material: ${safe(fields.material)}</div>
+                <div>Product: ${safe(fields.product)}</div>
+                <div>Serial: ${safe(fields.serial)}</div>
+            `;
+
+            tr.innerHTML = `
+                <td>${f.filename}</td>
+                <td>${previewHtml}</td>
+                <td>
+                    <select class="ticket-type-select">
+                        <option value="">-- select --</option>
+                        ${ticketTypeOptionsHtml()}
+                    </select>
+                </td>
+                <td>
+                    <select class="store-select">
+                        <option value="">-- select --</option>
+                        ${storeOptionsHtml()}
+                    </select>
+                </td>
+                <td class="status-cell status-pending" data-status="pending">●</td>
+            `;
+            pdfRows.appendChild(tr);
+        });
+
+        pdfContainer.style.display = parsedFiles.length ? 'block' : 'none';
+        btnCreate.disabled = parsedFiles.length === 0;
+        createHint.textContent = parsedFiles.length
+            ? 'Select Ticket Type + Store per row, then click CREATE TICKETS.'
+            : 'Upload at least one PDF first.';
+    }
+
+    pdfInput.addEventListener('change', async () => {
+        if (!pdfInput.files.length) return;
+
+        const formData = new FormData();
+        for (const file of pdfInput.files) {
+            formData.append('pdfs', file, file.name);
+        }
+
+        appendLog(`Uploading ${pdfInput.files.length} PDF(s) for parsing...`);
+        try {
+            const res = await fetch('/parse_pdfs', {
+                method: 'POST',
+                body: formData
+            });
+            if (!res.ok) {
+                appendLog('ERROR: /parse_pdfs HTTP ' + res.status);
+                return;
+            }
+            const data = await res.json();
+            parsedFiles = data.files || [];
+            appendLog(`Parsed ${parsedFiles.length} PDF(s).`);
+            buildRows();
+        } catch (e) {
+            appendLog('ERROR calling /parse_pdfs: ' + e);
+        }
+    });
+
+    btnCreate.addEventListener('click', async () => {
+        const username = document.getElementById('crm_username').value.trim();
+        const password = document.getElementById('crm_password').value.trim();
+        if (!username || !password) {
+            alert('Please enter CRM username and password.');
+            return;
+        }
+
+        const ticketsPayload = [];
+        let hasError = false;
+        pdfRows.querySelectorAll('tr').forEach(tr => {
+            const id = tr.dataset.fileId;
+            const typeSel = tr.querySelector('.ticket-type-select');
+            const storeSel = tr.querySelector('.store-select');
+            const ticket_type = typeSel.value;
+            const store = storeSel.value;
+
+            if (!ticket_type || !store) {
+                hasError = true;
+            }
+
+            ticketsPayload.push({
+                id,
+                ticket_type,
+                store
+            });
+        });
+
+        if (hasError) {
+            alert('Please select Ticket Type and Store for every PDF row.');
+            return;
+        }
+
+        appendLog(`Starting ticket creation for ${ticketsPayload.length} PDF(s)...`);
+        btnCreate.disabled = true;
+
+        // Reset status icons to pending
+        pdfRows.querySelectorAll('td.status-cell').forEach(td => {
+            td.textContent = '●';
+            td.className = 'status-cell status-pending';
+            td.dataset.status = 'pending';
+        });
+
+        try {
+            const res = await fetch('/create_tickets', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json;charset=utf-8'
+                },
+                body: JSON.stringify({
+                    crm_username: username,
+                    crm_password: password,
+                    tickets: ticketsPayload
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                appendLog('ERROR from /create_tickets: ' + (data.error || res.status));
+            } else {
+                (data.results || []).forEach(r => {
+                    const tr = pdfRows.querySelector(`tr[data-file-id="${r.id}"]`);
+                    if (!tr) return;
+                    const tdStatus = tr.querySelector('.status-cell');
+                    if (r.success) {
+                        tdStatus.textContent = '✅';
+                        tdStatus.className = 'status-cell status-ok';
+                        tdStatus.dataset.status = 'ok';
+                    } else {
+                        tdStatus.textContent = '❌';
+                        tdStatus.className = 'status-cell status-fail';
+                        tdStatus.dataset.status = 'fail';
+                    }
+                    appendLog(`${r.filename || r.id}: ${r.success ? 'OK' : 'FAIL'} ${r.error ? '— ' + r.error : ''}`);
+                });
+            }
+        } catch (e) {
+            appendLog('ERROR calling /create_tickets: ' + e);
+        } finally {
+            btnCreate.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

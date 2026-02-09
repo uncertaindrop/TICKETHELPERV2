@@ -1,0 +1,32 @@
+[
+  {
+    "domain": "pmm.irepair.gr",
+    "expiry": 1769960699,
+    "httpOnly": true,
+    "name": "ci_session",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "vsdugdvsegjlmvlmqrah7s5csc38bfdh"
+  },
+  {
+    "domain": ".pmm.irepair.gr",
+    "expiry": 1804111295,
+    "httpOnly": false,
+    "name": "fe_last_browser_login",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": true,
+    "value": "1"
+  },
+  {
+    "domain": "pmm.irepair.gr",
+    "expiry": 1804434245,
+    "httpOnly": false,
+    "name": "fe_last_browser_login",
+    "path": "/",
+    "sameSite": "Lax",
+    "secure": false,
+    "value": "1"
+  }
+]
